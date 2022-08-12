@@ -10,7 +10,7 @@ normalizedDatawrite = normalizedData.worksheets[0]
 
 #(value - 14631) / (209591899- 14631) for each data point, can flip if need to
 #(v - min) / (max - min) for each unique column
-def normalizeFloat(index):
+def normalizeVolume(index):
     while(oldDataWrite.cell(column=4, row=index).value != None):
         normalizedDatawrite.cell(column=4, row=index).value = (oldDataWrite.cell(column=4, row=index).value - 14631) / (209591899- 14631)
         index += 1
@@ -55,7 +55,6 @@ def normalizeMktCap(index):
 #(v - min) / (max - min) for each unique column
 def normalizePrice(index):
     while(oldDataWrite.cell(column=6, row=index).value != None): 
-        print(index)
         normalizedDatawrite.cell(column=6, row=index).value = (oldDataWrite.cell(column=6, row=index).value - 0.01) / (150.08-0.01)
         index += 1
 
@@ -69,12 +68,12 @@ def normalizeChange(index):
 def expectedOutPut(index):
     while(oldDataWrite.cell(column=23, row=index).value != None): 
         if(oldDataWrite.cell(column=23, row=index).value == "Green"):
-            normalizedDatawrite.cell(column=10, row=index).value = 1
+            normalizedDatawrite.cell(column=8, row=index).value = 1
         else:
-             normalizedDatawrite.cell(column=10, row=index).value = 0
+             normalizedDatawrite.cell(column=8, row=index).value = 0
         index += 1
 
-normalizeFloat(2)
+normalizeVolume(2)
 normalizeMktCap(2)
 normalizePrice(2)
 normalizeChange(2)
