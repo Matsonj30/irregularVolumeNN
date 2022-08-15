@@ -1,14 +1,9 @@
 from email.policy import default
 import numpy
-from numpy import ravel
 import random
 import pandas
 import math
-class Node:
-    def __init__(self, value) -> None:
-        self.value = value
-        self.delta = 0
-
+from operator import neg
 class Network:
 
     def __init__(self, learningRate, numberOfInput, numberOfHidden, numberOfOutput):
@@ -17,8 +12,6 @@ class Network:
         self.numberOfHidden = numberOfHidden
         self.numberOfOutput= numberOfOutput
 
-
-      
         self.inputLayer = {
             "values": [],
             "deltas":[],
@@ -31,16 +24,24 @@ class Network:
         }
         self.outputLayer = {
             "values": [],
-            "deltas":[],
+            "deltas":[0,0],
         }
     
 
     def activationFunction(self,number): #sigmoid for now, will probably swap to reLU cause apparently it is king
-        return(max(0, number)) #RELU
-        #return 1/(1+ numpy.exp(-abs(number))) #sigmoid
+        # if(number > 0):
+        #     return number
+        # else:
+        #     return int(0)
+        return 1/(1+ numpy.exp(neg(number))) #sigmoid
 
-    def sigmoidPrime(number):
-        return
+    def reLUPrime(self, number):
+        if(number < 0):
+            return 0
+        else:
+            return 1
+    def sigmoidPrime(self, number):
+        return(number*(1-number))
     def initializeNetwork(self):
         self.inputLayer["values"].append(1) #bias node
         self.hiddenLayer["values"].append(1) #bias node
@@ -56,7 +57,7 @@ class Network:
         self.trainNetwork()
 
     def initializeWeights(self):
-        for i in range(len(self.hiddenLayer["values"])-1):
+        for i in range(len(self.hiddenLayer["values"])-1): #-1 because we dont want to pass to the bias node
             self.inputLayer["weights"].append([])
             for j in range(len(self.inputLayer["values"])):
                 self.inputLayer["weights"][-1].append(round(random.uniform(-1,1),2))
@@ -67,7 +68,6 @@ class Network:
             for j in range(len(self.hiddenLayer["values"])):
                 self.hiddenLayer["weights"][-1].append(round(random.uniform(-1,1),2))
       
-       
 
     def passForward(self):
         answer = 0
@@ -75,20 +75,17 @@ class Network:
         for node in range(len(self.hiddenLayer["values"])):
             self.hiddenLayer["values"][node] = self.activationFunction(self.hiddenLayer["values"][node])
         self.hiddenLayer["values"] = numpy.insert(self.hiddenLayer["values"], 0, 1) #insert bias (might be a bad idea to do it this way)
-
         self.outputLayer["values"] = numpy.matmul(self.hiddenLayer["weights"],self.hiddenLayer["values"])
         for node in range(len(self.outputLayer["values"])):
             self.outputLayer["values"][node] = self.activationFunction(self.outputLayer["values"][node])
-
-        print(self.hiddenLayer["values"])
-        print(self.outputLayer["values"])
        
 
     def trainNetwork(self):
         data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalizedData.xlsx") #We are going to use 500 data points
         correctClassifications = 0
         numberOfClassifications = 0
-        for ticker in range(207): #one epoch, 500 data points
+        for ticker in range(5): #one epoch, 500 data points
+            numberOfClassifications += 1
             for i in range(5): #reset one hot values
                 self.inputLayer["values"][i+1] = 0
             match data.iloc[ticker, 4:5].values[0]: #mkt cap column in excel file
@@ -112,30 +109,46 @@ class Network:
             ticker += 1
 
             self.passForward() #passforwardeachrow
+           
+            correctValue = data.iloc[ticker, 7:8].values[0] #expectedOutPut in table
+            if(self.outputLayer["values"][0] > self.outputLayer["values"][1]): #1 = Green, 0 = Red
+                estimatedValue = 1
+            else:
+                estimatedValue = 0
 
-# data = pandas.read_excel("D:/Programming/Repositories/screenerSettings/highVolume.xlsx")
-# print(data.iloc[:,4:5])
+            if(correctValue==estimatedValue):
+                correctClassifications += 1
+                continue
+            else:
+                self.backpropagation(correctValue)
 
-weight1 = [[1,1,1,1,1,1,1,1,1,1], #6x10
-[1,1,1,1,1,1,1,1,1,1],
-[1,1,1,1,1,1,1,1,1,1],
-[1,1,1,1,1,1,1,1,1,1],
-[1,1,1,1,1,1,1,1,1,1],
-[1,1,1,1,1,1,1,1,1,1],
-]
-values = [[1], #10x1 INPUT DICT has to look like this for matmult to work
-[1], 
-[1],
-[1],
-[1],
-[1],
-[1],
-[1],
-[1],
-[1],
+    def backpropagation(self,correctValue):
+        print(self.inputLayer)
+        print(self.hiddenLayer)
+        print(self.outputLayer)
+        
+        if correctValue == 1:
+            correctValue = [1,0]
+        else:
+            correctValue = [0,1]
+        print(correctValue)
+        for i in range(self.numberOfOutput): #calculate delta at each point, expected - actual for error
+            error = correctValue[i] - (self.outputLayer["values"][i]) #if expected output is 1, "values"[0]=1, otherwise [1]=1 
+            self.outputLayer["deltas"][i] = self.sigmoidPrime(self.outputLayer["values"][i]) * error #****pretty sure we use original values here, not the reLU values...
+        
+        for i in range(self.numberOfHidden): #6
+             for j in range(self.numberOfOutput):#2
+                print(self.hiddenLayer["weights"][j][i])
 
-
-] #1 x 1
-
-network = Network(0.05, 9, 6, 2)
+network = Network(0.05, 9, 6, 2) #maybe should be 9,5,2
 network.initializeNetwork()
+
+
+#values 1x10
+#weights 6x10
+
+#values 1x7
+#weights 2x7
+
+#This means that weights of the first hidden node to both nodes will be the first index in each array
+#the weights of the second node will be the second index of each array etc etc. 
