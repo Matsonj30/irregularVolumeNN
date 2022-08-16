@@ -1,4 +1,5 @@
 from email.policy import default
+from optparse import Values
 import numpy
 import random
 import pandas
@@ -14,7 +15,6 @@ class Network:
 
         self.inputLayer = {
             "values": [],
-            "deltas":[],
             "weights":[],
         }
         self.hiddenLayer = {
@@ -24,7 +24,7 @@ class Network:
         }
         self.outputLayer = {
             "values": [],
-            "deltas":[0,0],
+            "deltas":[],
         }
     
 
@@ -123,10 +123,8 @@ class Network:
                 self.backpropagation(correctValue)
 
     def backpropagation(self,correctValue):
-        print(self.inputLayer)
-        print(self.hiddenLayer)
-        print(self.outputLayer)
-        
+        self.hiddenLayer["deltas"] = []
+        self.outputLayer["deltas"] = []
         if correctValue == 1:
             correctValue = [1,0]
         else:
@@ -134,13 +132,25 @@ class Network:
         print(correctValue)
         for i in range(self.numberOfOutput): #calculate delta at each point, expected - actual for error
             error = correctValue[i] - (self.outputLayer["values"][i]) #if expected output is 1, "values"[0]=1, otherwise [1]=1 
-            self.outputLayer["deltas"][i] = self.sigmoidPrime(self.outputLayer["values"][i]) * error #****pretty sure we use original values here, not the reLU values...
-        
-        for i in range(self.numberOfHidden): #6
-             for j in range(self.numberOfOutput):#2
-                print(self.hiddenLayer["weights"][j][i])
+            self.outputLayer["deltas"].append(self.sigmoidPrime(self.outputLayer["values"][i]) * error) #****pretty sure we use original values here, not the reLU values...
+         
+        for i in range(self.numberOfHidden + 1): 
+            delta = 0
+            for j in range(self.numberOfOutput): 
+                # print("sigmoid " + str(self.sigmoidPrime(self.hiddenLayer["values"][i])))
+                # print("weight " + str(self.hiddenLayer["weights"][j][i]))
+                # print("delta " + str(self.outputLayer["deltas"][j]))
+                delta += ((self.sigmoidPrime(self.hiddenLayer["values"][i])) * self.hiddenLayer["weights"][j][i] * self.outputLayer["deltas"][j]) #how can we change the weight of a bias if it's delta will always be zero?
+            self.hiddenLayer["deltas"].append(delta)
+            print(self.hiddenLayer["deltas"])
+        self.changeWeights()
 
-network = Network(0.05, 9, 6, 2) #maybe should be 9,5,2
+
+
+def changeWeights(self):
+    # for i in range(self.numberOfInput):
+    return
+network = Network(0.1, 9, 6, 2) #maybe should be 9,5,2
 network.initializeNetwork()
 
 
