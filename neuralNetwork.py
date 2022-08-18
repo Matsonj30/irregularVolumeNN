@@ -84,7 +84,8 @@ class Network:
         data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalizedData.xlsx") #We are going to use 500 data points
         correctClassifications = 0
         numberOfClassifications = 0
-        for ticker in range(5): #one epoch, 500 data points
+        
+        for ticker in range(500): #one epoch, 500 data points
             numberOfClassifications += 1
             for i in range(5): #reset one hot values
                 self.inputLayer["values"][i+1] = 0
@@ -102,7 +103,7 @@ class Network:
                 case "Mega":
                     self.inputLayer["values"][6] = 1
                 case _:
-                    print("No mktcap found")
+                    pass
             self.inputLayer["values"][7] = data.iloc[ticker, 3:4].values[0] #volume node
             self.inputLayer["values"][8] = data.iloc[ticker, 5:6].values[0] #price
             self.inputLayer["values"][9] = data.iloc[ticker, 6:7].values[0] #change when found
@@ -121,6 +122,16 @@ class Network:
                 continue
             else:
                 self.backpropagation(correctValue)
+        print(correctClassifications/numberOfClassifications)
+        while(correctClassifications/numberOfClassifications < 0.85): #looking for 85% accuracy
+            print(self.hiddenLayer["weights"])
+            self.trainNetwork()
+           
+
+    #to determine delta in output nodes, we will calculate the error in the output nodes (expected - actual) and then multiply that by our Fprime value
+    #to determine delta in hidden nodes, we will get its fprime value, multiply it by the weight and once again multiply by the delta in the output layer
+    #the total delta for the hidden nodes will be a summation of these calculations, one for each time a hidden node points to an output node 
+    # (f’(w11x1+w21x2+w01x0) x w14xΔ4+ f’(w11x1+w21x2+w01x0) x w15xΔ5) for example if there was two output nodes
 
     def backpropagation(self,correctValue):
         self.hiddenLayer["deltas"] = []
@@ -129,7 +140,6 @@ class Network:
             correctValue = [1,0]
         else:
             correctValue = [0,1]
-        print(correctValue)
         for i in range(self.numberOfOutput): #calculate delta at each point, expected - actual for error
             error = correctValue[i] - (self.outputLayer["values"][i]) #if expected output is 1, "values"[0]=1, otherwise [1]=1 
             self.outputLayer["deltas"].append(self.sigmoidPrime(self.outputLayer["values"][i]) * error) #****pretty sure we use original values here, not the reLU values...
@@ -137,21 +147,26 @@ class Network:
         for i in range(self.numberOfHidden + 1): 
             delta = 0
             for j in range(self.numberOfOutput): 
-                # print("sigmoid " + str(self.sigmoidPrime(self.hiddenLayer["values"][i])))
-                # print("weight " + str(self.hiddenLayer["weights"][j][i]))
-                # print("delta " + str(self.outputLayer["deltas"][j]))
                 delta += ((self.sigmoidPrime(self.hiddenLayer["values"][i])) * self.hiddenLayer["weights"][j][i] * self.outputLayer["deltas"][j]) #how can we change the weight of a bias if it's delta will always be zero?
             self.hiddenLayer["deltas"].append(delta)
-            print(self.hiddenLayer["deltas"])
         self.changeWeights()
 
 
+    #Each weight will be updated to -> current weight += (learning rate * delta of the node it points to * input value node where weights are being changed)
+    def changeWeights(self):
+        #change hidden layer weights, access weight [0][0] first then [1][0] then iterate upwards to access each weight as the matrix is a 2x7
+        for i in range(self.numberOfHidden + 1):
+            for j in range(self.numberOfOutput):
+                self.hiddenLayer["weights"][j][i] += self.learningRate * self.outputLayer["deltas"][j] * self.hiddenLayer["values"][i]
+      
+        #change input layer weights
+        for i in range(self.numberOfInput + 1):
+            for j in range(self.numberOfHidden):
+                self.inputLayer["weights"][j][i] += self.learningRate * self.hiddenLayer["deltas"][j] * self.inputLayer["values"][i]
 
-def changeWeights(self):
-    # for i in range(self.numberOfInput):
-    return
-network = Network(0.1, 9, 6, 2) #maybe should be 9,5,2
-network.initializeNetwork()
+mallNetwork = Network(0.05,4,2,1)
+#network = Network(0.05, 9, 6, 2) #maybe should be 9,5,2
+#network.initializeNetwork()
 
 
 #values 1x10
