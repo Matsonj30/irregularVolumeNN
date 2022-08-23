@@ -3,7 +3,7 @@ import openpyxl
 
 
 oldData = openpyxl.load_workbook("D:/Programming/Repositories/screenerSettings/highVolume.xlsx", data_only=True) #data only ignores formula aspects 
-normalizedData = openpyxl.load_workbook("D:/Programming/Repositories/irregularVolumeNN/normalizedData.xlsx")
+normalizedData = openpyxl.load_workbook("D:/Programming/Repositories/irregularVolumeNN/normalization/normalizedData.xlsx")
 
 oldDataWrite = oldData.worksheets[0]
 normalizedDatawrite = normalizedData.worksheets[0]
