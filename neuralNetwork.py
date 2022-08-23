@@ -1,10 +1,12 @@
 from email.policy import default
 from optparse import Values
+from this import d
 import numpy
 import random
 import pandas
 import math
-from operator import neg
+from operator import indexOf, neg
+import sys
 class Network:
 
     def __init__(self, learningRate, numberOfInput, numberOfHidden, numberOfOutput):
@@ -12,6 +14,7 @@ class Network:
         self.numberOfInput = numberOfInput
         self.numberOfHidden = numberOfHidden
         self.numberOfOutput= numberOfOutput
+       
 
         self.inputLayer = {
             "values": [],
@@ -43,6 +46,7 @@ class Network:
     def sigmoidPrime(self, number):
         return(number*(1-number))
     def initializeNetwork(self):
+        sys.setrecursionlimit(2500)
         self.inputLayer["values"].append(1) #bias node
         self.hiddenLayer["values"].append(1) #bias node
         
@@ -54,7 +58,8 @@ class Network:
         for outputNode in range(self.numberOfOutput):
              self.outputLayer["values"].append(0)
         self.initializeWeights()
-        self.trainNetwork()
+        #self.trainNetwork()
+        self.trainDrugNetwork(0)
 
     def initializeWeights(self):
         for i in range(len(self.hiddenLayer["values"])-1): #-1 because we dont want to pass to the bias node
@@ -67,7 +72,7 @@ class Network:
             self.hiddenLayer["weights"].append([])
             for j in range(len(self.hiddenLayer["values"])):
                 self.hiddenLayer["weights"][-1].append(round(random.uniform(-1,1),2))
-      
+    
 
     def passForward(self):
         answer = 0
@@ -81,7 +86,7 @@ class Network:
        
 
     def trainNetwork(self):
-        data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalizedData.xlsx") #We are going to use 500 data points
+        data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalization/normalizedData.xlsx") #We are going to use 500 data points
         correctClassifications = 0
         numberOfClassifications = 0
         
@@ -127,6 +132,72 @@ class Network:
             print(self.hiddenLayer["weights"])
             self.trainNetwork()
            
+    def trainDrugNetwork(self, success):
+        data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalization/normalizedDrugData.xlsx")
+        correctClassifications = 0
+        numberOfClassifications = 0
+        # if(success< 0.65):
+        #     self.learningRate = 0.5
+        # elif(success <0.7):
+        #     self.learningRate = 0.3
+        # elif(success <0.73):
+        #     self.learningRate = 0.1
+        # else:
+        #     self.learningRate = 0.05
+
+        for sample in range(200):
+            numberOfClassifications += 1
+            for i in range(7):
+                self.inputLayer["values"][i+1] = 0 #reset one hot values 
+            match data.iloc[sample, 1:2].values[0]: #gender
+                case 'M':
+                    self.inputLayer["values"][1] = 1
+                case 'F':
+                    self.inputLayer["values"][2] = 1
+                case _:
+                    pass
+            match data.iloc[sample, 2:3].values[0]: #BP
+                case "HIGH":
+                    self.inputLayer["values"][3] = 1
+                case "NORMAL":
+                    self.inputLayer["values"][4] = 1
+                case "LOW":
+                    self.inputLayer["values"][5] = 1
+                case _:
+                    pass
+            match data.iloc[sample, 3:4].values[0]: #chlorestrol
+                case "HIGH":
+                    self.inputLayer["values"][6] = 1
+                case "NORMAL":
+                    self.inputLayer["values"][7] = 1
+                case _:
+                    pass
+            self.inputLayer["values"][8] = data.iloc[sample, 4:5].values[0]
+            self.inputLayer["values"][9] = data.iloc[sample, 0:1].values[0]
+            self.passForward()
+         
+            correctValue = data.iloc[sample, 5:6].values[0]
+            match correctValue:
+                case "DrugY":
+                    correctAnswer = [1,0,0,0,0]
+                case "drugX":
+                    correctAnswer = [0,1,0,0,0]
+                case "drugA":
+                    correctAnswer = [0,0,1,0,0]
+                case "drugB":
+                    correctAnswer = [0,0,0,1,0]
+                case "drugC":
+                    correctAnswer = [0,0,0,0,1]
+            if(indexOf(correctAnswer,max(correctAnswer))) == indexOf(self.outputLayer["values"],max(self.outputLayer["values"])):
+                correctClassifications += 1
+            
+            self.backpropagation(correctAnswer) 
+        successRate = (correctClassifications / numberOfClassifications)
+        print(successRate)
+        if((successRate) < 0.85):
+            print(self.hiddenLayer["weights"])
+            self.trainDrugNetwork(successRate)
+
 
     #to determine delta in output nodes, we will calculate the error in the output nodes (expected - actual) and then multiply that by our Fprime value
     #to determine delta in hidden nodes, we will get its fprime value, multiply it by the weight and once again multiply by the delta in the output layer
@@ -136,13 +207,14 @@ class Network:
     def backpropagation(self,correctValue):
         self.hiddenLayer["deltas"] = []
         self.outputLayer["deltas"] = []
-        if correctValue == 1:
+        if correctValue == 1:  #band aid fix, we shouldnt have the correct value be specific to one data set 
             correctValue = [1,0]
-        else:
+        if correctValue == 0: 
             correctValue = [0,1]
+
         for i in range(self.numberOfOutput): #calculate delta at each point, expected - actual for error
             error = correctValue[i] - (self.outputLayer["values"][i]) #if expected output is 1, "values"[0]=1, otherwise [1]=1 
-            self.outputLayer["deltas"].append(self.sigmoidPrime(self.outputLayer["values"][i]) * error) #****pretty sure we use original values here, not the reLU values...
+            self.outputLayer["deltas"].append(self.sigmoidPrime(self.outputLayer["values"][i]) * error)
          
         for i in range(self.numberOfHidden + 1): 
             delta = 0
@@ -164,8 +236,13 @@ class Network:
             for j in range(self.numberOfHidden):
                 self.inputLayer["weights"][j][i] += self.learningRate * self.hiddenLayer["deltas"][j] * self.inputLayer["values"][i]
 
-mallNetwork = Network(0.05,4,2,1)
-#network = Network(0.05, 9, 6, 2) #maybe should be 9,5,2
+
+drugNetwork = Network(0.05,9,6,5)
+#0.1 -> ~73
+#same with 0.05^
+#0.08 -> ~63
+drugNetwork.initializeNetwork()
+#network = Network(0.1, 9, 6, 2) #maybe should be 9,5,2
 #network.initializeNetwork()
 
 
