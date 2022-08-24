@@ -1,6 +1,5 @@
-from email.policy import default
-from optparse import Values
-from this import d
+import torch
+
 import numpy
 import random
 import pandas
@@ -8,7 +7,6 @@ import math
 from operator import indexOf, neg
 import sys
 class Network:
-
     def __init__(self, learningRate, numberOfInput, numberOfHidden, numberOfOutput):
         self.learningRate = learningRate
         self.numberOfInput = numberOfInput
@@ -58,21 +56,23 @@ class Network:
         for outputNode in range(self.numberOfOutput):
              self.outputLayer["values"].append(0)
         self.initializeWeights()
-        #self.trainNetwork()
-        self.trainDrugNetwork(0)
+        self.trainNetwork()
+        #self.trainDrugNetwork(0)
 
     def initializeWeights(self):
         for i in range(len(self.hiddenLayer["values"])-1): #-1 because we dont want to pass to the bias node
             self.inputLayer["weights"].append([])
             for j in range(len(self.inputLayer["values"])):
-                self.inputLayer["weights"][-1].append(round(random.uniform(-1,1),2))
+                self.inputLayer["weights"][-1].append(round(random.uniform(-1,1),2) * math.sqrt(1/10)) #variance is 10 because we have 10 weights with a variance of 1 being added to each hidden node
+                                                                                                      #standard deviation is then sqrt(10) which is ~3 which is way higher than the STD of 1 we want
+                                                                                                      #therefore we will multiply our std of 1 by sqrt(1/n) to achieve a std and variance of 1
         
 
         for i in range(len(self.outputLayer["values"])):
             self.hiddenLayer["weights"].append([])
             for j in range(len(self.hiddenLayer["values"])):
-                self.hiddenLayer["weights"][-1].append(round(random.uniform(-1,1),2))
-    
+                self.hiddenLayer["weights"][-1].append(round(random.uniform(-1,1),2) * math.sqrt(1/7))
+        print(self.inputLayer["weights"])
 
     def passForward(self):
         answer = 0
@@ -128,26 +128,18 @@ class Network:
             else:
                 self.backpropagation(correctValue)
         print(correctClassifications/numberOfClassifications)
-        while(correctClassifications/numberOfClassifications < 0.85): #looking for 85% accuracy
-            print(self.hiddenLayer["weights"])
+        while(correctClassifications/numberOfClassifications <= 0.85): #looking for 85% accuracy
+
             self.trainNetwork()
            
     def trainDrugNetwork(self, success):
         data = pandas.read_excel("D:/Programming/Repositories/irregularVolumeNN/normalization/normalizedDrugData.xlsx")
         correctClassifications = 0
         numberOfClassifications = 0
-        # if(success< 0.65):
-        #     self.learningRate = 0.5
-        # elif(success <0.7):
-        #     self.learningRate = 0.3
-        # elif(success <0.73):
-        #     self.learningRate = 0.1
-        # else:
-        #     self.learningRate = 0.05
 
         for sample in range(200):
             numberOfClassifications += 1
-            for i in range(7):
+            for i in range(8):
                 self.inputLayer["values"][i+1] = 0 #reset one hot values 
             match data.iloc[sample, 1:2].values[0]: #gender
                 case 'M':
@@ -190,14 +182,15 @@ class Network:
                     correctAnswer = [0,0,0,0,1]
             if(indexOf(correctAnswer,max(correctAnswer))) == indexOf(self.outputLayer["values"],max(self.outputLayer["values"])):
                 correctClassifications += 1
-            
-            self.backpropagation(correctAnswer) 
+            else:
+                self.backpropagation(correctAnswer) 
         successRate = (correctClassifications / numberOfClassifications)
         print(successRate)
-        if((successRate) < 0.85):
-            print(self.hiddenLayer["weights"])
+        if((successRate) < 0.92):
             self.trainDrugNetwork(successRate)
-
+        else:
+            print(self.inputLayer)
+            print(self.outputLayer)
 
     #to determine delta in output nodes, we will calculate the error in the output nodes (expected - actual) and then multiply that by our Fprime value
     #to determine delta in hidden nodes, we will get its fprime value, multiply it by the weight and once again multiply by the delta in the output layer
@@ -237,13 +230,16 @@ class Network:
                 self.inputLayer["weights"][j][i] += self.learningRate * self.hiddenLayer["deltas"][j] * self.inputLayer["values"][i]
 
 
-drugNetwork = Network(0.05,9,6,5)
+#drugNetwork = Network(0.09,9,15,5)
+#15 hidden neurons works really well
+#0.07 got to ~85 *** so did 0.075 idk
 #0.1 -> ~73
 #same with 0.05^
 #0.08 -> ~63
-drugNetwork.initializeNetwork()
-#network = Network(0.1, 9, 6, 2) #maybe should be 9,5,2
-#network.initializeNetwork()
+#drugNetwork.initializeNetwork()
+
+network = Network(0.075, 9, 18, 2) #maybe should be 9,5,2
+network.initializeNetwork()
 
 
 #values 1x10
